@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>BuildScan – Mesure Bâtiment</title>
+  <meta name="description" content="Photographiez et mesurez vos pièces, murs et surfaces en temps réel. Export PDF." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- SPLASH SCREEN -->
+  <div id="splash-screen">
+    <div class="splash-logo">
+      <div class="splash-icon">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="48" height="48" rx="12" fill="url(#g1)"/>
+          <path d="M20 44 L20 20 L44 20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          <path d="M26 38 L32 28 L38 34 L42 30" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="44" cy="22" r="4" fill="white" opacity="0.9"/>
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#f97316"/>
+              <stop offset="1" stop-color="#ea580c"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="splash-title">BuildScan</h1>
+      <p class="splash-subtitle">Mesure Bâtiment Pro</p>
+    </div>
+    <div class="splash-loader">
+      <div class="loader-bar"></div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app" class="hidden">
+
+    <!-- HEADER -->
+    <header id="app-header">
+      <div class="header-left">
+        <button id="btn-back" class="btn-icon hidden" aria-label="Retour">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="header-brand">
+          <span class="brand-icon">📐</span>
+          <span class="brand-name">BuildScan</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="btn-history" class="btn-icon" aria-label="Historique" title="Historique">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════ SCREEN: HOME ═══════════════════════════════ -->
+    <section id="screen-home" class="screen active">
+      <div class="home-hero">
+        <div class="hero-content">
+          <h1 class="hero-title">Mesurez en<br/><span class="gradient-text">toute précision</span></h1>
+          <p class="hero-subtitle">Photographiez pièces et murs,<br/>calculez surfaces et cotes instantanément.</p>
+        </div>
+        <div class="hero-illustration">
+          <div class="illus-phone">
+            <div class="illus-screen">
+              <div class="illus-grid"></div>
+              <div class="illus-point p1"></div>
+              <div class="illus-point p2"></div>
+              <div class="illus-point p3"></div>
+              <div class="illus-point p4"></div>
+              <div class="illus-line l1"></div>
+              <div class="illus-line l2"></div>
+              <div class="illus-badge">4.2 m²</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-actions">
+        <button id="btn-new-measure" class="btn-primary btn-large" aria-label="Nouvelle mesure">
+          <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+          Nouvelle mesure
+        </button>
+        <button id="btn-from-gallery" class="btn-secondary btn-large" aria-label="Depuis la galerie">
+          <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          Depuis la galerie
+          <input type="file" id="file-input" accept="image/*" class="file-input-hidden" />
+        </button>
+      </div>
+
+      <div class="home-stats" id="home-stats">
+        <div class="stat-card" id="stat-count">
+          <span class="stat-value" id="stat-count-val">0</span>
+          <span class="stat-label">Mesures</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-card" id="stat-surface">
+          <span class="stat-value" id="stat-surface-val">0 m²</span>
+          <span class="stat-label">Surface totale</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-card">
+          <span class="stat-value" id="stat-session-val">–</span>
+          <span class="stat-label">Session</span>
+        </div>
+      </div>
+
+      <div class="home-tips">
+        <div class="tip-card">
+          <span class="tip-icon">💡</span>
+          <p class="tip-text"><strong>Astuce :</strong> Après la photo, posez vos points sur les coins, puis calibrez avec une distance connue (ex. hauteur de porte = 2.04 m).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════ SCREEN: CAMERA ═══════════════════════════════ -->
+    <section id="screen-camera" class="screen">
+      <div class="camera-container">
+        <video id="camera-video" autoplay playsinline muted></video>
+        <canvas id="camera-overlay" class="camera-overlay"></canvas>
+
+        <div class="camera-ui-top">
+          <div class="camera-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            Cadrez la pièce entière
+          </div>
+        </div>
+
+        <div class="camera-guides">
+          <div class="guide-corner tl"></div>
+          <div class="guide-corner tr"></div>
+          <div class="guide-corner bl"></div>
+          <div class="guide-corner br"></div>
+          <div class="guide-center"></div>
+        </div>
+
+        <div class="camera-ui-bottom">
+          <button id="btn-flip-camera" class="btn-cam-secondary" aria-label="Retourner caméra">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+          </button>
+          <button id="btn-capture" class="btn-capture" aria-label="Photographier">
+            <div class="btn-capture-inner"></div>
+          </button>
+          <button id="btn-torch" class="btn-cam-secondary" aria-label="Lampe torche">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6h-5L9 12h4l-2 6 9-8h-5l3-4z"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════ SCREEN: MEASURE ═══════════════════════════════ -->
+    <section id="screen-measure" class="screen">
+      <div class="measure-toolbar">
+        <div class="toolbar-info" id="toolbar-info">
+          <span class="toolbar-step-badge" id="step-badge">1</span>
+          <span id="toolbar-instruction">Posez les coins de la surface à mesurer</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="btn-undo-point" class="btn-tool" title="Annuler dernier point" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+          </button>
+          <button id="btn-clear-points" class="btn-tool btn-tool-danger" title="Tout effacer" aria-label="Effacer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6l-1 14H6L5 6"/><path d="M8 6V4h8v2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="measure-canvas-wrap" id="measure-canvas-wrap">
+        <canvas id="measure-canvas" aria-label="Zone de mesure"></canvas>
+      </div>
+
+      <div class="measure-panel" id="measure-panel">
+        <!-- Calibration -->
+        <div id="panel-calibrate" class="panel-section hidden">
+          <h3 class="panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 3 3 21"/><path d="M3 3h6v6H3zM15 15h6v6h-6z"/></svg>
+            Calibration de l'échelle
+          </h3>
+          <p class="panel-hint">Sélectionnez 2 points dont vous connaissez la distance réelle.</p>
+          <div class="calibrate-segment-list" id="calibrate-segment-list"></div>
+          <div class="calibrate-input-row">
+            <label for="calib-distance" class="calib-label">Distance réelle :</label>
+            <input type="number" id="calib-distance" class="calib-input" min="0.01" step="0.01" value="2.04" />
+            <select id="calib-unit" class="calib-select">
+              <option value="m">m</option>
+              <option value="cm">cm</option>
+            </select>
+          </div>
+          <button id="btn-apply-calib" class="btn-primary btn-full">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 6 9 17l-5-5"/></svg>
+            Appliquer la calibration
+          </button>
+        </div>
+
+        <!-- Results -->
+        <div id="panel-results" class="panel-section hidden">
+          <h3 class="panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+            Résultats
+          </h3>
+          <div class="results-grid" id="results-grid"></div>
+          <div class="results-surface-card" id="surface-card">
+            <div class="surface-icon">📐</div>
+            <div class="surface-info">
+              <span class="surface-label">Surface totale</span>
+              <span class="surface-value" id="result-surface">–</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Name + Save -->
+        <div id="panel-save" class="panel-section hidden">
+          <div class="save-row">
+            <div class="input-group">
+              <label for="element-name" class="input-label">Nom de l'élément</label>
+              <input type="text" id="element-name" class="text-input" placeholder="Ex: Salon, Mur Nord…" maxlength="50" />
+            </div>
+          </div>
+          <div class="save-actions">
+            <button id="btn-export-pdf" class="btn-primary">
+              <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+              Export PDF
+            </button>
+            <button id="btn-save-measure" class="btn-secondary">
+              <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 0-2-2V5a2 2 0 0 0 2-2h11l5 5v11a2 2 0 0 0-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+              Sauvegarder
+            </button>
+          </div>
+        </div>
+
+        <!-- Floating action: validate polygon -->
+        <div id="panel-validate" class="panel-section hidden">
+          <button id="btn-validate-polygon" class="btn-primary btn-full btn-pulse">
+            <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            Valider la surface (<span id="btn-validate-count">0</span> points)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════ SCREEN: HISTORY ═══════════════════════════════ -->
+    <section id="screen-history" class="screen">
+      <div class="history-header">
+        <h2 class="history-title">Mes mesures</h2>
+        <button id="btn-clear-history" class="btn-danger-sm" aria-label="Tout effacer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 6h18"/><path d="M19 6l-1 14H6L5 6"/><path d="M8 6V4h8v2"/></svg>
+          Tout effacer
+        </button>
+      </div>
+      <div id="history-list" class="history-list">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p class="empty-title">Aucune mesure sauvegardée</p>
+          <p class="empty-sub">Vos mesures apparaîtront ici après les avoir sauvegardées.</p>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /app -->
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- MODAL: Calibration segments -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Sélectionner un segment</h3>
+        <button id="modal-close" class="btn-icon" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="storage.js"></script>
+  <script src="camera.js"></script>
+  <script src="measure.js"></script>
+  <script src="pdf-export.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
