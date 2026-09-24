@@ -18,6 +18,7 @@ const $ = id => document.getElementById(id);
 const screens = {
   home:    $('screen-home'),
   camera:  $('screen-camera'),
+  ar:      $('screen-ar'),
   measure: $('screen-measure'),
   history: $('screen-history'),
 };
@@ -44,6 +45,8 @@ $('btn-back').addEventListener('click', () => {
   if (AppState.currentScreen === 'camera') {
     Camera.stop();
     navigate('home');
+  } else if (AppState.currentScreen === 'ar') {
+    AR.stopSession().then(() => navigate('home'));
   } else if (AppState.currentScreen === 'measure') {
     navigate('home');
     Measure.clearPoints();
@@ -86,7 +89,26 @@ function updateHomeStats() {
   $('stat-session-val').textContent = Storage.getSessionStart();
 }
 
-// Bouton "Nouvelle mesure" → caméra
+// Bouton "Mesure AR" → WebXR
+$('btn-ar-measure').addEventListener('click', async () => {
+  const supported = await AR.isSupported();
+  if (!supported) {
+    showToast('AR non disponible sur ce navigateur. Utilisez Chrome sur Android avec ARCore.', 'error');
+    // Fallback vers le mode photo
+    if (!Camera.isAvailable()) {
+      showToast('Caméra également non disponible.', 'error');
+      return;
+    }
+    navigate('camera');
+    try { await Camera.start(); }
+    catch { showToast('Impossible d\'accéder à la caméra.', 'error'); navigate('home'); }
+    return;
+  }
+  navigate('ar');
+  startARSession();
+});
+
+// Bouton "Mesure par photo" → caméra
 $('btn-new-measure').addEventListener('click', async () => {
   if (!Camera.isAvailable()) {
     showToast('Caméra non disponible sur ce navigateur.', 'error');
@@ -100,7 +122,6 @@ $('btn-new-measure').addEventListener('click', async () => {
     navigate('home');
   }
 });
-
 // Bouton "Depuis la galerie"
 $('file-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -343,6 +364,205 @@ function setMeasureStep(step, text) {
   $('step-badge').textContent = step;
   $('toolbar-instruction').textContent = text;
 }
+
+/* ════════════════════════════════════════════════
+   AR SCREEN
+   ════════════════════════════════════════════════ */
+
+let arResults = null; // résultats courants AR
+
+async function startARSession() {
+  arResults = null;
+  AR.clearPoints();
+  $('ar-save-panel').classList.add('hidden');
+  $('btn-ar-validate').disabled = true;
+  updateARUI(null, [], null);
+
+  try {
+    await AR.startSession(
+      $('ar-overlay'),
+      onARFrame,
+      onARPointPlaced
+    );
+  } catch (err) {
+    console.error('AR session error:', err);
+    showToast('Erreur AR : ' + (err.message || err), 'error');
+    navigate('home');
+  }
+}
+
+/**
+ * Callback boucle AR : met à jour le réticule et les métriques en temps réel
+ */
+function onARFrame(hitPose, points, results) {
+  const reticle = $('ar-reticle');
+  if (hitPose) {
+    reticle.classList.add('detected');
+    reticle.classList.remove('hidden');
+  } else {
+    reticle.classList.remove('detected');
+  }
+
+  // Mise à jour métriques live (distance vers le dernier point posé)
+  if (hitPose && points.length >= 1) {
+    const last = points[points.length - 1];
+    const d = Math.sqrt(
+      Math.pow(hitPose.x - last.x, 2) + Math.pow(hitPose.z - last.z, 2)
+    ).toFixed(2);
+    $('ar-val-dist').textContent = `${d} m`;
+    $('ar-card-dist').classList.add('active');
+  } else {
+    $('ar-val-dist').textContent = '– m';
+    $('ar-card-dist').classList.remove('active');
+  }
+
+  if (results && results.surfaceM2 !== null) {
+    $('ar-val-surf').textContent = `${results.surfaceM2} m²`;
+    $('ar-card-surf').classList.add('active');
+  }
+  if (results && results.perimeterM !== null) {
+    $('ar-val-peri').textContent = `${results.perimeterM} m`;
+    $('ar-card-peri').classList.add('active');
+  }
+}
+
+/**
+ * Callback point posé : met à jour le compteur + segments + bouton valider
+ */
+function onARPointPlaced(points, results) {
+  arResults = results;
+  updateARUI(null, points, results);
+
+  const count = points.length;
+  $('ar-point-count').textContent = `${count} point${count > 1 ? 's' : ''}`;
+
+  // Bouton valider actif dès 3 points
+  $('btn-ar-validate').disabled = count < 3;
+
+  // Statut
+  const statusEl = $('ar-status-text');
+  if (count === 0) {
+    statusEl.textContent = 'Pointez vers le sol…';
+  } else if (count < 3) {
+    statusEl.textContent = `${count} point${count > 1 ? 's' : ''} – continuez`;
+  } else {
+    statusEl.textContent = `${count} points – validez ou ajoutez-en`;
+  }
+}
+
+function updateARUI(hitPose, points, results) {
+  // Segments pills
+  const segWrap = $('ar-segments');
+  segWrap.innerHTML = '';
+  if (results && results.segments) {
+    results.segments.forEach(seg => {
+      const pill = document.createElement('div');
+      pill.className = 'ar-seg-pill';
+      pill.innerHTML = `<span class="seg-label">${seg.label}</span><span class="seg-val">${seg.realM} m</span>`;
+      segWrap.appendChild(pill);
+    });
+  }
+}
+
+// Placer un point
+$('btn-ar-place').addEventListener('click', () => {
+  const placed = AR.placePoint();
+  if (!placed) {
+    showToast('Aucune surface détectée. Pointez vers le sol.', 'error');
+  }
+});
+
+// Annuler dernier point AR
+$('btn-ar-undo').addEventListener('click', () => {
+  AR.undoLastPoint();
+  const count = AR.points.length;
+  $('ar-point-count').textContent = `${count} point${count > 1 ? 's' : ''}`;
+  $('btn-ar-validate').disabled = count < 3;
+  if (count === 0) $('ar-status-text').textContent = 'Pointez vers le sol…';
+  arResults = AR.results;
+  updateARUI(null, AR.points, arResults);
+});
+
+// Valider la surface AR → affiche le panneau de sauvegarde
+$('btn-ar-validate').addEventListener('click', () => {
+  arResults = AR.results;
+  if (!arResults) { showToast('Résultats non disponibles.', 'error'); return; }
+
+  // Remplir le panneau de résultats
+  const resWrap = $('ar-save-results');
+  resWrap.innerHTML = '';
+
+  if (arResults.surfaceM2 !== null) {
+    resWrap.innerHTML += `<div class="ar-result-chip surf"><span class="rc-label">Surface</span><span class="rc-value">${arResults.surfaceM2} m²</span></div>`;
+  }
+  if (arResults.perimeterM !== null) {
+    resWrap.innerHTML += `<div class="ar-result-chip"><span class="rc-label">Périmètre</span><span class="rc-value">${arResults.perimeterM} m</span></div>`;
+  }
+  (arResults.segments || []).forEach(seg => {
+    resWrap.innerHTML += `<div class="ar-result-chip"><span class="rc-label">${seg.label}</span><span class="rc-value">${seg.realM} m</span></div>`;
+  });
+
+  $('ar-save-panel').classList.remove('hidden');
+});
+
+// Recommencer (réinitialiser)
+$('btn-ar-restart').addEventListener('click', () => {
+  $('ar-save-panel').classList.add('hidden');
+  AR.clearPoints();
+  arResults = null;
+  $('btn-ar-validate').disabled = true;
+  $('ar-point-count').textContent = '0 point';
+  $('ar-status-text').textContent = 'Pointez vers le sol…';
+  $('ar-segments').innerHTML = '';
+  ['ar-val-dist', 'ar-val-surf', 'ar-val-peri'].forEach(id => {
+    $(id).textContent = id.includes('surf') ? '– m²' : '– m';
+  });
+  ['ar-card-dist', 'ar-card-surf', 'ar-card-peri'].forEach(id => {
+    $(id).classList.remove('active');
+  });
+});
+
+// Export PDF depuis AR
+$('btn-ar-pdf').addEventListener('click', async () => {
+  if (!arResults) { showToast('Aucun résultat AR.', 'error'); return; }
+  showToast('Génération du PDF…');
+  try {
+    const name = $('ar-element-name').value.trim() || 'Mesure AR';
+    const screenshot = AR.captureFrame();
+    await PDFExport.generate({
+      name,
+      annotatedImageUrl: screenshot,
+      surfaceM2:   arResults.surfaceM2,
+      perimeterM:  arResults.perimeterM,
+      segments:    arResults.segments,
+      calibInfo:   'Mesure AR WebXR – coordonnées monde réel',
+    });
+    showToast('PDF téléchargé ! 📄', 'success');
+  } catch (e) {
+    console.error(e);
+    showToast('Erreur PDF.', 'error');
+  }
+});
+
+// Sauvegarder depuis AR
+$('btn-ar-save').addEventListener('click', () => {
+  if (!arResults) { showToast('Aucun résultat AR.', 'error'); return; }
+  const name = $('ar-element-name').value.trim() || 'Mesure AR';
+  const screenshot = AR.captureFrame();
+
+  Storage.save({
+    name,
+    annotatedImageUrl: screenshot,
+    surfaceM2:   arResults.surfaceM2,
+    perimeterM:  arResults.perimeterM,
+    segments:    arResults.segments,
+    source: 'ar',
+  });
+
+  showToast(`"${name}" sauvegardé ✓`, 'success');
+  updateHomeStats();
+  $('ar-save-panel').classList.add('hidden');
+});
 
 /* ════════════════════════════════════════════════
    HISTORY SCREEN
